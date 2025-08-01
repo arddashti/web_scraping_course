@@ -26,4 +26,4 @@ engine = create_engine(f'mssql+pyodbc:///?odbc_connect={params}')
 # درج داده در جدول tsetmc_test (در صورت وجود، جایگزین می‌شود)
 df.to_sql('tsetmc_test', con=engine, if_exists='replace', index=False)
 
-print("✅ داده‌ها با موفقیت در جدول 'tsetmc_test' درج شدند.")
+#print("✅ داده‌ها با موفقیت در جدول 'tsetmc_test' درج شدند.")
