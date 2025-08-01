@@ -7,7 +7,7 @@ import urllib
 # پارامترها
 username = "novinib.com"
 password = "n07!1\\1!13.Com04"
-flow = 1
+flow = 7
 
 url = "http://service.tsetmc.com/webservice/TsePublicV2.asmx"
 
