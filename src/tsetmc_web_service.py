@@ -1,12 +1,16 @@
 import requests
 import pandas as pd
 from lxml import etree
+from sqlalchemy import create_engine
+import urllib
 
+# پارامترها
 username = "novinib.com"
 password = "n07!1\\1!13.Com04"
-flow = 2  # کد بازار (مثلاً 1 برای بورس)
+flow = 1
 
 url = "http://service.tsetmc.com/webservice/TsePublicV2.asmx"
+
 headers = {
     "Content-Type": "text/xml; charset=utf-8",
     "SOAPAction": '"http://tsetmc.com/Instrument"'
@@ -26,28 +30,65 @@ soap_body = f"""<?xml version="1.0" encoding="utf-8"?>
 </soap:Envelope>"""
 
 response = requests.post(url, data=soap_body.encode('utf-8'), headers=headers)
+xml_str = response.content
 
-if response.status_code != 200:
-    print(f"❌ خطا: {response.status_code}")
-    print(response.text)
+# پارس کردن XML پاسخ
+root = etree.fromstring(xml_str)
+
+# نام‌فضاها
+ns = {
+    'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
+    'ns': 'http://tsetmc.com/'
+}
+
+# رسیدن به داده‌ها
+# مسیر به InstrumentResult (ممکنه بسته به ساختار پاسخ فرق کنه)
+instrument_result = root.find('.//soap:Body/ns:InstrumentResponse/ns:InstrumentResult', namespaces=ns)
+
+if instrument_result is None:
+    print("داده‌ای پیدا نشد")
     exit()
 
-# پردازش پاسخ XML
-tree = etree.fromstring(response.content)
-body = tree.find('.//{http://schemas.xmlsoap.org/soap/envelope/}Body')
-instrument_response = body[0]
-instrument_result = instrument_response[0]
+# داده‌ها معمولا درون یک عنصر xsd:schema قرار داره (XML Schema)
+schema = instrument_result.find('.//{http://www.w3.org/2001/XMLSchema}schema')
 
-# استخراج داده‌های TseInstruments
-ns = {'ns': 'http://tsetmc.com/'}
-records = []
-for tse_instrument in instrument_result.findall('.//ns:TseInstruments', namespaces=ns):
-    record = {child.tag.split('}')[1]: child.text for child in tse_instrument}
-    records.append(record)
+if schema is None:
+    print("Schema پیدا نشد، احتمالا ساختار متفاوت است")
+    exit()
 
-df = pd.DataFrame(records)
-print("✅ داده‌های Instrument دریافت شد:")
+# اگر داده‌ها به شکل XML DataSet هستند باید از بخش data استفاده کنیم
+# این بخش کمی پیچیده‌ست چون باید داده‌های tabular را از XML استخراج کنیم
+
+# ساده‌ترین کار استخراج همه TseInstruments:
+rows = []
+
+for tse_instrument in instrument_result.findall('.//TseInstruments'):
+    row = {}
+    for elem in tse_instrument:
+        tag_name = etree.QName(elem).localname
+        row[tag_name] = elem.text
+    rows.append(row)
+
+# اگر rows خالی بود، ممکنه نام‌فضاها باعث نشدن داده‌ها پیدا بشن؛
+# می‌توانی بجای findall بالا از XPath بدون نام‌فضا استفاده کنی یا namespace را اصلاح کنی.
+
+# ساخت DataFrame
+df = pd.DataFrame(rows)
+
 print(df.head())
 
-df.to_csv("instrument_data.csv", index=False, encoding='utf-8-sig')
-print("📁 ذخیره شد: instrument_data.csv")
+# اتصال به SQL Server
+server = '10.120.148.101'
+database = 'test'
+username_sql = 'sa'
+password_sql = 'Ada@20215'
+
+params = urllib.parse.quote_plus(
+    f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username_sql};PWD={password_sql}'
+)
+engine = create_engine(f'mssql+pyodbc:///?odbc_connect={params}')
+
+# درج داده در جدول
+df.to_sql('tsetmc_test', con=engine, if_exists='replace', index=False)
+
+print("✅ داده‌ها با موفقیت در جدول 'tsetmc_test' درج شدند.")

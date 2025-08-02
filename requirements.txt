@@ -4,3 +4,4 @@ pandas
 lxml
 sqlalchemy
 jupyter
+pyodbc
