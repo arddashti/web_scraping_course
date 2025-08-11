@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from importlib.util import find_spec
-from typing import Any, Union, Tuple, Dict
+from typing import Any, Union, Tuple, Dict, Literal
 
 # debugpy.__main__ should have preloaded pydevd properly before importing this module.
 # Otherwise, some stdlib modules above might have had imported threading before pydevd
@@ -23,6 +23,7 @@ import debugpy.server
 from debugpy.common import log, sockets
 from debugpy.server import api
 
+TargetKind = Literal["file", "module", "code", "pid"]
 
 TARGET = "<filename> | -m <module> | -c <code> | --pid <pid>"
 
@@ -35,6 +36,7 @@ Usage: debugpy --listen | --connect
                [--configure-<name> <value>]...
                [--log-to <path>] [--log-to-stderr]
                [--parent-session-pid <pid>]]
+               [--adapter-access-token <token>]
                {1}
                [<arg>]...
 """.format(
@@ -42,13 +44,14 @@ Usage: debugpy --listen | --connect
 )
 
 
+# Changes here should be aligned with the public API CliOptions.
 class Options(object):
-    mode = None
+    mode: Union[Literal["connect", "listen"], None] = None
     address: Union[Tuple[str, int], None] = None
     log_to = None
     log_to_stderr = False
     target: Union[str, None] = None
-    target_kind: Union[str, None] = None
+    target_kind: Union[TargetKind, None] = None
     wait_for_client = False
     adapter_access_token = None
     config: Dict[str, Any] = {}
@@ -145,7 +148,7 @@ def set_config(arg, it):
     options.config[name] = value
 
 
-def set_target(kind: str, parser=(lambda x: x), positional=False):
+def set_target(kind: TargetKind, parser=(lambda x: x), positional=False):
     def do(arg, it):
         options.target_kind = kind
         target = parser(arg if positional else next(it))
@@ -182,8 +185,6 @@ switches = [
     ("--wait-for-client",       None,               set_const("wait_for_client", True)),
     ("--configure-.+",          "<value>",          set_config),
     ("--parent-session-pid",    "<pid>",            set_arg("parent_session_pid", lambda x: int(x) if x else None)),
-
-    # Switches that are used internally by the client or debugpy itself.
     ("--adapter-access-token",   "<token>",         set_arg("adapter_access_token")),
 
     # Targets. The "" entry corresponds to positional command line arguments,

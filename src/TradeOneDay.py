@@ -14,8 +14,9 @@ headers = {
     "SOAPAction": '"http://tsetmc.com/TradeOneDay"'
 }
 
-# --- تنظیمات اتصال به دیتابیس SQL Server ---
-server = '10.120.148.101'
+# اطلاعات اتصال به دیتابیس SQL Server
+#server = '10.120.148.101'
+server = 'localhost'
 database = 'test'
 username_sql = 'sa'
 password_sql = 'Ada@20215'

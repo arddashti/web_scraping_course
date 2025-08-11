@@ -17,7 +17,8 @@ headers = {
 }
 
 # اطلاعات اتصال به دیتابیس SQL Server
-server = '10.120.148.101'
+#server = '10.120.148.101'
+server = 'localhost'
 database = 'test'
 username_sql = 'sa'
 password_sql = 'Ada@20215'
@@ -52,7 +53,7 @@ with engine.begin() as conn:
     BEGIN
         CREATE TABLE tsetmc_api.instrument (
             InsCode NVARCHAR(50) PRIMARY KEY,
-            DEven NVARCHAR(50) NULL,
+            DEVen NVARCHAR(50) NULL,
             InstrumentID NVARCHAR(50) NULL,
             CValMne NVARCHAR(50) NULL,
             LVal18 NVARCHAR(100) NULL,
