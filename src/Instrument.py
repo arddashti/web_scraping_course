@@ -3,7 +3,7 @@ import pandas as pd  # برای کار با داده‌های جدولی
 from lxml import etree  # برای پارس کردن XML
 from sqlalchemy import create_engine, text  # برای اتصال به دیتابیس با SQLAlchemy
 import urllib  # برای رمزگذاری رشته‌ی اتصال به SQL Server
-from config import engine, TSETMC_USERNAME, TSETMC_PASSWORD, TSETMC_URL
+from config import engine, TSETMC_USERNAME, TSETMC_PASSWORD, TSETMC_URL , TSETMC_SCHEMA
 
 # هدرهای مورد نیاز برای SOAP Request
 headers = {

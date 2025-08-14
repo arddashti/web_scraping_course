@@ -21,9 +21,7 @@
    python --version
 Expected output:
 
-nginx
-Copy
-Edit
+
 Python 3.12.0
 2️⃣ Enabling Script Execution Policy for All Users (PowerShell)
 To run PowerShell scripts for all users, set the Execution Policy at the LocalMachine scope (Administrator required).
@@ -33,11 +31,7 @@ Open PowerShell as Administrator:
 
 Start → type powershell → Right-click → Run as Administrator
 
-Run:
 
-powershell
-Copy
-Edit
 Set-ExecutionPolicy RemoteSigned -Scope LocalMachine
 When prompted, type:
 
@@ -59,27 +53,19 @@ Local scripts can now run freely; consider the risk on shared or sensitive syste
 
 3️⃣ Set Up Virtual Environment (Windows + PowerShell)
 Step 1: Create virtual environment
-powershell
-Copy
-Edit
+
 py -m venv .venv
 Step 2: Activate virtual environment
-powershell
-Copy
-Edit
+
 .\.venv\Scripts\Activate.ps1
 You should see (.venv) in your terminal prompt.
 
 Step 3: Install required packages
-powershell
-Copy
-Edit
+
 pip install -r requirements.txt
 Or manually:
 
-powershell
-Copy
-Edit
+
 pip install sqlalchemy pyodbc pandas requests lxml python-dotenv
 4️⃣ Project Setup & Environment Variables
 This project fetches TSETMC stock data via SOAP API and stores it in SQL Server.
@@ -87,9 +73,7 @@ This project fetches TSETMC stock data via SOAP API and stores it in SQL Server.
 4.1 Create .env file
 In the project root:
 
-ini
-Copy
-Edit
+
 # Database
 DB_SERVER=localhost
 DB_NAME=test
@@ -103,9 +87,7 @@ TSETMC_URL=http://service.tsetmc.com/webservice/TsePublicV2.asmx
 ⚠️ Security: Do not commit .env to Git. Add it to .gitignore.
 
 4.2 Load environment variables in Python
-python
-Copy
-Edit
+
 from dotenv import load_dotenv
 import os
 
@@ -124,9 +106,6 @@ TSETMC_URL = os.getenv("TSETMC_URL")
 5️⃣ Initialize Database
 Use init_db.py to create the schema and tables (checks existence before creating):
 
-powershell
-Copy
-Edit
 python src/init_db.py
 Tables Created
 instrument
@@ -144,9 +123,6 @@ All tables are under schema defined in TSETMC_SCHEMA (e.g., tsetmc_api).
 6️⃣ Fetch Data from TSETMC API
 Example SOAP request:
 
-python
-Copy
-Edit
 import requests
 from lxml import etree
 
@@ -180,15 +156,10 @@ python-dotenv keeps environment variables secure and separate from code.
 
 After setting the Execution Policy, always open a new PowerShell window to activate .venv:
 
-powershell
-Copy
-Edit
+
 D:\web_scraping\web_scraping_course\.venv\Scripts\Activate.ps1
 ✅ Now your development environment is fully configured and ready for web scraping and fetching data from TSETMC.
 
-yaml
-Copy
-Edit
 
 ---
 

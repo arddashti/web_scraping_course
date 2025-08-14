@@ -138,6 +138,26 @@ with engine.begin() as conn:
     """))
     print(f"✅ جدول TradeOneDay بررسی و در صورت نیاز ایجاد شد")
 
+    # ایجاد جدول auction
+    conn.execute(text(f"""
+        IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES 
+                    WHERE TABLE_SCHEMA = '{TSETMC_SCHEMA}' AND TABLE_NAME = 'auction')
+        BEGIN
+            EXEC('
+                CREATE TABLE {TSETMC_SCHEMA}.auction (
+                    Idn BIGINT PRIMARY KEY,
+                    AuctionID BIGINT NULL,          -- نام ستون دقیقاً با DataFrame هماهنگ شد
+                    MessageType NVARCHAR(50) NULL,
+                    Deven INT NULL,
+                    Heven INT NULL,
+                    Message NVARCHAR(MAX) NULL
+                );
+            ')
+        END
+    """))
+    print(f"✅ جدول auction بررسی و در صورت نیاز ایجاد شد")
+
+
 
 
 
