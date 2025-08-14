@@ -1,6 +1,13 @@
 # init_db.py
 from sqlalchemy import text
 from config import engine, TSETMC_SCHEMA
+import logging
+
+
+# تنظیم لاگ‌گیری
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 with engine.begin() as conn:
     # ایجاد اسکما در صورت عدم وجود
@@ -157,8 +164,57 @@ with engine.begin() as conn:
     """))
     print(f"✅ جدول auction بررسی و در صورت نیاز ایجاد شد")
 
+    # ایجاد جدول best_limits
+    with engine.begin() as conn:
+        conn.execute(text(f"""
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES 
+                        WHERE TABLE_SCHEMA = '{TSETMC_SCHEMA}' AND TABLE_NAME = 'best_limits')
+            BEGIN
+                EXEC('
+                    CREATE TABLE {TSETMC_SCHEMA}.best_limits (
+                        InsCode BIGINT NOT NULL,
+                        number TINYINT NOT NULL,
+                        Flow TINYINT NOT NULL,
+                        RefID BIGINT NULL,
+                        YOmOrgTran NVARCHAR(50) NULL,
+                        QTitMeDem BIGINT NULL,
+                        ZOrdMeDem INT NULL,
+                        PMeDem DECIMAL(18,4) NULL,
+                        PMeOf DECIMAL(18,4) NULL,
+                        ZOrdMeOf INT NULL,
+                        QTitMeOf BIGINT NULL,
+                        Heven INT NULL,
+                        PRIMARY KEY (InsCode, number, Flow)
+                    );
+                ')
+            END
+        """))
+        logger.info(f"✅ جدول {TSETMC_SCHEMA}.best_limits بررسی و در صورت نیاز ایجاد شد")
+        print(f"✅ جدول best_limits بررسی و در صورت نیاز ایجاد شد")
+        
 
-
+    with engine.begin() as conn:
+        # ایجاد جدول client_type در صورت عدم وجود
+        conn.execute(text(f"""
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES 
+                        WHERE TABLE_SCHEMA = '{TSETMC_SCHEMA}' AND TABLE_NAME = 'client_type')
+            BEGIN
+                EXEC('
+                    CREATE TABLE {TSETMC_SCHEMA}.client_type (
+                        InsCode NVARCHAR(50) PRIMARY KEY,
+                        Buy_CountI BIGINT,
+                        Buy_CountN BIGINT,
+                        Buy_I_Volume DOUBLE PRECISION,
+                        Buy_N_Volume DOUBLE PRECISION,
+                        Sell_CountI BIGINT,
+                        Sell_CountN BIGINT,
+                        Sell_I_Volume DOUBLE PRECISION,
+                        Sell_N_Volume DOUBLE PRECISION
+                    );
+                ')
+            END
+        """))
+        logger.info(f"✅ جدول client_type بررسی و در صورت نیاز ایجاد شد")
 
 
 """

@@ -47,8 +47,7 @@ def parse_tradeoneday_xml(xml_content):
 
 # --- اجرای برنامه ---
 
-# اطمینان از وجود اسکیمای tsetmc_api و جدول TradeOneDay
-ensure_schema_and_table(engine)
+
 
 # انتخاب تاریخ نمونه برای دریافت داده‌ها (YYYYMMDD)
 sel_date = 20230801
