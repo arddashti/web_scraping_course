@@ -3,13 +3,7 @@ import pandas as pd
 from lxml import etree
 from sqlalchemy import create_engine, text
 import urllib
-
-# اطلاعات ورود به وب‌سرویس TSETMC
-username = "novinib.com"
-password = "n07!1\\1!13.Com04"
-
-# آدرس وب‌سرویس SOAP برای Board
-url = "http://service.tsetmc.com/webservice/TsePublicV2.asmx"
+from config import engine, TSETMC_USERNAME, TSETMC_PASSWORD, TSETMC_URL
 
 # هدرهای مورد نیاز برای SOAP Request مخصوص Board
 headers = {
@@ -17,49 +11,12 @@ headers = {
     "SOAPAction": '"http://tsetmc.com/Board"'
 }
 
-# اطلاعات اتصال به دیتابیس SQL Server
-#server = '10.120.148.101'
-server = 'localhost'
-database = 'test'
-username_sql = 'sa'
-password_sql = 'Ada@20215'
-
-# ساخت رشته اتصال ODBC برای SQLAlchemy
-params = urllib.parse.quote_plus(
-    f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username_sql};PWD={password_sql}'
-)
-engine = create_engine(f'mssql+pyodbc:///?odbc_connect={params}')
-
 # تعریف namespaceهای XML برای جست‌وجوی عناصر خاص
 ns = {
     'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
     'ns': 'http://tsetmc.com/'
 }
 
-# ایجاد schema tsetmc_api در صورت عدم وجود
-with engine.begin() as conn:
-    create_schema_sql = """
-    IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'tsetmc_api')
-    BEGIN
-        EXEC('CREATE SCHEMA tsetmc_api');
-    END
-    """
-    conn.execute(text(create_schema_sql))
-    print("✅ بررسی و ایجاد schema tsetmc_api (در صورت عدم وجود) انجام شد")
-
-# ایجاد جدول board در schema tsetmc_api در صورت عدم وجود
-with engine.begin() as conn:
-    create_table_sql = """
-    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'tsetmc_api' AND TABLE_NAME = 'board')
-    BEGIN
-        CREATE TABLE tsetmc_api.board (
-            CComVal NVARCHAR(50) PRIMARY KEY,
-            LBoard NVARCHAR(200) NULL
-        );
-    END
-    """
-    conn.execute(text(create_table_sql))
-    print("✅ بررسی و ایجاد جدول tsetmc_api.board (در صورت عدم وجود) انجام شد")
 
 # دریافت CComValهای موجود برای جلوگیری از درج داده تکراری
 with engine.connect() as conn:
@@ -75,14 +32,14 @@ soap_body = f"""<?xml version="1.0" encoding="utf-8"?>
                xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
     <Board xmlns="http://tsetmc.com/">
-      <UserName>{username}</UserName>
-      <Password>{password}</Password>
+      <UserName>{TSETMC_USERNAME}</UserName>
+      <Password>{TSETMC_PASSWORD}</Password>
     </Board>
   </soap:Body>
 </soap:Envelope>"""
 
 # ارسال درخواست به وب‌سرویس
-response = requests.post(url, data=soap_body.encode('utf-8'), headers=headers)
+response = requests.post(TSETMC_URL, data=soap_body.encode('utf-8'), headers=headers)
 
 # تجزیه XML پاسخ
 root = etree.fromstring(response.content)

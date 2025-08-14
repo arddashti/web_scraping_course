@@ -5,3 +5,4 @@ lxml
 sqlalchemy
 jupyter
 pyodbc
+python-dotenv

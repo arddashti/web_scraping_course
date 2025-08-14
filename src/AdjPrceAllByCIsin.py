@@ -4,55 +4,19 @@ from lxml import etree
 from sqlalchemy import create_engine, text
 import urllib
 import time
+from config import engine, TSETMC_USERNAME, TSETMC_PASSWORD, TSETMC_URL
 
-# اطلاعات ورود وب‌سرویس و دیتابیس
-username = "novinib.com"
-password = "n07!1\\1!13.Com04"
-url = "http://service.tsetmc.com/webservice/TsePublicV2.asmx"
 
 headers = {
     "Content-Type": "text/xml; charset=utf-8",
     "SOAPAction": '"http://tsetmc.com/AdjPrceAllByCIsin"'
 }
 
-server = 'localhost'
-database = 'test'
-username_sql = 'sa'
-password_sql = 'Ada@20215'
-
-params = urllib.parse.quote_plus(
-    f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username_sql};PWD={password_sql}'
-)
-engine = create_engine(f'mssql+pyodbc:///?odbc_connect={params}')
-
 ns = {
     'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
     'ns': 'http://tsetmc.com/',
     'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1'
 }
-
-# ایجاد اسکیمای tsetmc_api و جدول adj_price_all در صورت عدم وجود
-with engine.begin() as conn:
-    conn.execute(text("""
-        IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'tsetmc_api')
-            EXEC('CREATE SCHEMA tsetmc_api');
-    """))
-    
-    conn.execute(text("""
-        IF NOT EXISTS (
-            SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'tsetmc_api' AND TABLE_NAME = 'adj_price_all'
-        )
-        EXEC('
-            CREATE TABLE tsetmc_api.adj_price_all (
-                InsCode NVARCHAR(50) NOT NULL,
-                DEven INT NULL,
-                PClosing DECIMAL(18,4) NULL,
-                PClosingNoAdj DECIMAL(18,4) NULL,
-                Flow INT NULL,
-                CIsin NVARCHAR(50) NOT NULL
-            );
-        ')
-    """))
 
 # خواندن همه InsCode و CIsin های معتبر از جدول instrument
 with engine.connect() as conn:
@@ -83,14 +47,14 @@ for idx, row in df_ins.iterrows():
                xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
     <AdjPrceAllByCIsin xmlns="http://tsetmc.com/">
-      <UserName>{username}</UserName>
-      <Password>{password}</Password>
+      <UserName>{TSETMC_USERNAME}</UserName>
+      <Password>{TSETMC_PASSWORD}</Password>
       <CIsin>{cisin}</CIsin>
     </AdjPrceAllByCIsin>
   </soap:Body>
 </soap:Envelope>"""
 
-    response = requests.post(url, data=soap_body.encode('utf-8'), headers=headers)
+    response = requests.post(TSETMC_URL, data=soap_body.encode('utf-8'), headers=headers)
     
     root = etree.fromstring(response.content)
     diffgram = root.find('.//diffgr:diffgram', namespaces=ns)

@@ -3,66 +3,14 @@ import pandas as pd
 from lxml import etree
 from sqlalchemy import create_engine, text
 import urllib
+from config import engine, TSETMC_USERNAME, TSETMC_PASSWORD, TSETMC_URL
 
-# --- تنظیمات ورود به وب‌سرویس ---
-username = "novinib.com"
-password = "n07!1\\1!13.Com04"
-url = "http://service.tsetmc.com/WebService/TsePublicV2.asmx"
 
 headers = {
     "Content-Type": "text/xml; charset=utf-8",
     "SOAPAction": '"http://tsetmc.com/TradeOneDay"'
 }
 
-# اطلاعات اتصال به دیتابیس SQL Server
-#server = '10.120.148.101'
-server = 'localhost'
-database = 'test'
-username_sql = 'sa'
-password_sql = 'Ada@20215'
-
-params = urllib.parse.quote_plus(
-    f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username_sql};PWD={password_sql}'
-)
-engine = create_engine(f'mssql+pyodbc:///?odbc_connect={params}')
-
-# --- تابع ایجاد اسکیمای tsetmc_api و جدول TradeOneDay در صورت عدم وجود ---
-def ensure_schema_and_table(engine):
-    with engine.begin() as conn:
-        # ایجاد schema در صورت نبودن
-        conn.execute(text("""
-            IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'tsetmc_api')
-            EXEC('CREATE SCHEMA tsetmc_api')
-        """))
-
-        # بررسی وجود جدول
-        table_exists = conn.execute(text("""
-            SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = 'tsetmc_api' AND TABLE_NAME = 'TradeOneDay'
-        """)).scalar()
-
-        # ایجاد جدول در صورت نبودن
-        if table_exists == 0:
-            conn.execute(text("""
-                CREATE TABLE tsetmc_api.TradeOneDay (
-                    LVal18AFC NVARCHAR(255),
-                    DEven INT,
-                    ZTotTran DECIMAL(38,10),
-                    QTotTran5J DECIMAL(38,10),
-                    QTotCap DECIMAL(38,10),
-                    InsCode BIGINT,
-                    LVal30 NVARCHAR(255),
-                    PClosing DECIMAL(38,10),
-                    PDrCotVal DECIMAL(38,10),
-                    PriceChange DECIMAL(38,10),
-                    PriceMin DECIMAL(38,10),
-                    PriceMax DECIMAL(38,10),
-                    PriceFirst DECIMAL(38,10),
-                    PriceYesterday DECIMAL(38,10)
-                    
-                )
-            """))
-        print("✅ جدول TradeOneDay بررسی یا ایجاد شد.")
 
 # --- تابع تبدیل پاسخ XML وب‌سرویس به DataFrame ---
 def parse_tradeoneday_xml(xml_content):
@@ -121,15 +69,15 @@ for flow in flows:
                xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
     <TradeOneDay xmlns="http://tsetmc.com/">
-      <UserName>{username}</UserName>
-      <Password>{password}</Password>
+      <UserName>{TSETMC_USERNAME}</UserName>
+      <Password>{TSETMC_PASSWORD}</Password>
       <SelDate>{sel_date}</SelDate>
       <Flow>{flow}</Flow>
     </TradeOneDay>
   </soap:Body>
 </soap:Envelope>"""
 
-    response = requests.post(url, data=soap_body.encode('utf-8'), headers=headers)
+    response = requests.post(TSETMC_URL, data=soap_body.encode('utf-8'), headers=headers)
     print("HTTP Status:", response.status_code)
     if response.status_code != 200:
         print("⚠️ درخواست موفق نبود، ادامه به Flow بعدی")
