@@ -11,15 +11,11 @@ headers = {
     "SOAPAction": '"http://tsetmc.com/Instrument"'
 }
 
-
-
 # تعریف namespaceهای XML برای جست‌وجوی عناصر خاص
 ns = {
     'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
     'ns': 'http://tsetmc.com/'
 }
-
-
 
 # دریافت InsCodeهای موجود برای جلوگیری از درج تکراری
 with engine.connect() as conn:

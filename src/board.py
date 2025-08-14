@@ -75,10 +75,5 @@ else:
     df_new.to_sql('board', schema='tsetmc_api', con=engine, if_exists='append', index=False)
     print(f"✅ {len(df_new)} ردیف جدید درج شد")
 
-"""
-📘 راهنمای ستون‌های خروجی جدول tsetmc_api.board:
 
-CComVal  : کد تابلو (کلید اصلی جدول)
-LBoard   : نام تابلو
-"""
 
