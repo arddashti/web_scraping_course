@@ -6,4 +6,4 @@ __pycache__/
 output/
 data/
 .venv/
-.env
+.env*
