@@ -10,25 +10,10 @@ import requests
 import time
 import pandas as pd
 from datetime import datetime
+from config import engine, TSETMC_USERNAME, TSETMC_PASSWORD, TSETMC_URL, TSETMC_SCHEMA
 
 # بارگذاری متغیرهای محیطی
 load_dotenv()
-
-# ------------------------------
-# Database
-# ------------------------------
-DB_SERVER = os.getenv("DB_SERVER")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
-TSETMC_SCHEMA = os.getenv("TSETMC_SCHEMA", "tsetmc_api")
-
-params = urllib.parse.quote_plus(
-    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-    f"SERVER={DB_SERVER};DATABASE={DB_NAME};"
-    f"UID={DB_USER};PWD={DB_PASS}"
-)
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
 
 # ------------------------------
 # 1. باز کردن مرورگر با Selenium برای دریافت کوکی‌ها
