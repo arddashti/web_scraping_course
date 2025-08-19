@@ -35,9 +35,6 @@ Start → type powershell → Right-click → Run as Administrator
 Set-ExecutionPolicy RemoteSigned -Scope LocalMachine
 When prompted, type:
 
-powershell
-Copy
-Edit
 Y
 Explanation
 RemoteSigned allows:
@@ -62,7 +59,7 @@ You should see (.venv) in your terminal prompt.
 
 Step 3: Install required packages
 
-pip install -r requirements.txt
+
 Or manually:
 
 
@@ -165,4 +162,23 @@ D:\web_scraping\web_scraping_course\.venv\Scripts\Activate.ps1
 
 If you want, I can also create a **workflow diagram** showing `.env → DB → TSETMC API → Tables` to make the README visually more beginner-friendly.  
 
-Do you want me to add that diagram?
+مراحل درست ساخت محیط مجازی با py
+
+پوشه‌ی خراب .venv رو پاک کن (اگر هنوز هست):
+
+Remove-Item -Recurse -Force .venv
+
+
+ساخت محیط مجازی با py:
+
+py -m venv .venv
+
+
+فعال‌سازی در PowerShell:
+
+.\.venv\Scripts\Activate.ps1
+
+
+نصب نیازمندی‌ها:
+
+pip install -r requirements.txt

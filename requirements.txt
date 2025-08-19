@@ -6,3 +6,7 @@ sqlalchemy
 jupyter
 pyodbc
 python-dotenv
+browser-cookie3
+selenium
+webdriver-manager
+openpyxl
