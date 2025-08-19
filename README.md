@@ -181,4 +181,4 @@ py -m venv .venv
 
 نصب نیازمندی‌ها:
 
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
