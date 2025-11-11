@@ -68,7 +68,7 @@ def insert_new_rows(df):
         print(f"✅ {len(df_new)} ردیف جدید درج شد")
 
 # حلقه ۱۰۰ بار
-for i in range(30):
+for i in range(1000):
     print(f"\n🔄 اجرای بار {i+1}/5000")
     last_idn = get_last_idn()
     print(f"✅ آخرین Idn از جدول: {last_idn}")
