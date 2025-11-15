@@ -1,0 +1,226 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WAF</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #F7F8FA;
+      direction: rtl;
+      display: grid;
+      font-family: 'Noto Sans Arabic', sans-serif;
+      grid-gap: 12px;
+      grid-template-columns: repeat(4, 1fr);
+      margin: 56px 16px auto 16px;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      color: #565F6B;
+      grid-column: 1/span 4;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .container .title {
+      font-size: 16px;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 24px;
+      color: #FF8383;
+      text-align: right;
+    }
+
+    .container .desc {
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 22px;
+    }
+
+    .divider {
+      margin: 8px 0px;
+      border: 1px solid #DCE0E5;
+    }
+
+    .box {
+      padding: 20px 16px;
+      border-radius: 12px;
+      background: #F0F2F5;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .box div:first-child {
+      flex-grow: 1;
+    }
+
+    .box .label {
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 22px;
+      text-align: center;
+    }
+
+    .box .support {
+      font-size: 16px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 24px;
+      border-radius: 6px;
+      border: 1px solid #DCE0E5;
+      background: #FFF;
+      text-align: center;
+      padding: 12px 12px;
+    }
+
+    /* MD */
+    @media screen and (min-width: 744px) {
+      body {
+        grid-gap: 20px;
+        grid-template-columns: repeat(8, 1fr);
+        margin: 88px 40px auto 40px;
+      }
+
+      main {
+        gap: 32px;
+        grid-column: 2/span 6;
+      }
+
+      .container {
+        gap: 32px;
+      }
+
+      .container .title {
+        font-size: 20px;
+        font-style: normal;
+        font-weight: 600;
+        line-height: 32px;
+      }
+
+      .container .desc {
+        font-size: 16px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 24px;
+      }
+
+      .box {
+        padding: 24px 44px;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .box .label {
+        font-size: 18px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 28px;
+      }
+
+      .box .support {
+        font-size: 24px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 40px;
+        border-radius: 6px;
+        border: 1px solid #DCE0E5;
+        background: #FFF;
+        text-align: center;
+      }
+
+
+      .box .right {
+        text-align: right;
+      }
+
+      .box .left {
+        text-align: left;
+      }
+    }
+
+    /* LG */
+    @media screen and (min-width: 1024px) {
+      main {
+        max-width: 752px;
+        gap: 44px;
+        grid-column: 3/span 8;
+      }
+
+      body {
+        align-items: center;
+        justify-items: center;
+        grid-gap: 24px;
+        grid-template-columns: repeat(12, 1fr);
+      }
+
+      .container .title {
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 40px;
+      }
+
+      .container .desc {
+        font-size: 20px;
+        font-weight: 400;
+        line-height: 32px;
+      }
+
+      .box {
+        flex-direction: row;
+        justify-content: right;
+      }
+
+      .box .label {
+        font-size: 18px;
+        font-weight: 400;
+        line-height: 28px;
+      }
+
+      .box .support {
+        font-size: 24px;
+        line-height: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="container">
+      <h1 class="title">کاربر گرامی، درخواست شما معتبر نمی‌باشد.</h1>
+      <p class="desc">لطفا داده‌های وارد شده را کنترل کرده و یکبار دیگر تلاش کنید. 
+        در صورتی که دوباره با این پیغام مواجه شدید شماره پیگیری زیر را یادداشت کنید و با <a href="https://www.emofid.com/ai-support">پشتیبان هوشمند مفید</a> در ارتباط باشید.</p>
+    </div>
+    <div class="box">
+      <div class="label right">شماره پیگیری شما:</div>
+      <div class="support">6231462995376389989</div>
+    </div>
+    <hr class="divider"></hr>
+    <div class="container" style="direction: ltr">
+      <p class="desc">It appears that the URL requested was rejected.
+        Please review the inputs and attempt again.
+        It's better to write down the support ID and consult with the administrator if you face this problem again.</p>
+    </div>
+    <div class="box" style="direction: ltr;">
+      <div class="label left">Your Support ID:</div>
+      <div class="support">6231462995376389989</div>
+    </div>
+  </main>
+</body>
+</html>
