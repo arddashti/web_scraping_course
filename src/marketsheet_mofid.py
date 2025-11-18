@@ -11,6 +11,7 @@ from datetime import datetime
 import sys
 import os
 import pytz
+import threading
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 import config
@@ -22,10 +23,36 @@ DRIVER_PATH = r'D:\web_scraping\web_scraping_course\chromedriver-win64\chromedri
 USERNAME = '0062980920'
 PASSWORD = 'Ard136011@@'
 
-API_URL_MARKET_SHEET = "https://api-mts.orbis.easytrader.ir/ms/api/MarketSheet/all/IRTKGANJ0001"
-API_URL_TSETMC = "https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceInfo/58514988269776425"
+# تنظیمات نمادها
+SYMBOLS = [
+    {
+        'id': 'IRTKGANJ',
+        'name': 'IRTKGANJ0001',
+        'api_market_sheet': 'https://api-mts.orbis.easytrader.ir/ms/api/MarketSheet/all/IRTKGANJ0001',
+        'api_tsetmc': 'https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceInfo/58514988269776425',
+        'working_hours': {
+            'start_hour': 11,
+            'start_minute': 45,
+            'end_hour': 18,
+            'end_minute': 0
+        }
+    },
+    {
+        'id': 'IRT3MOJF',
+        'name': 'IRT3MOJF0001',
+        'api_market_sheet': 'https://api-mts.orbis.easytrader.ir/ms/api/MarketSheet/all/IRT3MOJF0001',
+        'api_tsetmc': 'https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceInfo/67141987086032267',
+        'working_hours': {
+            'start_hour': 8,
+            'start_minute': 45,
+            'end_hour': 12,
+            'end_minute': 30
+        }
+    }
+]
+
 FETCH_INTERVAL = 5
-MAX_TOKEN_REFRESH_ATTEMPTS = 3  # حداکثر تلاش برای تمدید توکن
+MAX_TOKEN_REFRESH_ATTEMPTS = 3
 
 # ═══════════════════════════════════════════════════════════
 # قسمت 2: توابع کمکی
@@ -271,7 +298,7 @@ def refresh_token_if_needed(driver, token, token_refresh_count):
         print(f"❌ خطا در تمدید توکن: {e}")
         return None, driver, token_refresh_count + 1
 
-def fetch_market_sheet_data(token):
+def fetch_market_sheet_data(token, api_url):
     """دریافت داده‌های Market Sheet با استفاده از توکن"""
     headers = {
         "Authorization": f"Bearer {token}",
@@ -283,7 +310,7 @@ def fetch_market_sheet_data(token):
     }
     
     try:
-        response = requests.get(API_URL_MARKET_SHEET, headers=headers, timeout=10)
+        response = requests.get(api_url, headers=headers, timeout=10)
         
         if response.status_code == 200:
             return response.json(), False  # موفق، توکن معتبر است
@@ -297,7 +324,7 @@ def fetch_market_sheet_data(token):
         print(f"✗ خطا در دریافت Market Sheet: {e}")
         return None, False
 
-def fetch_tsetmc_data():
+def fetch_tsetmc_data(api_url):
     """دریافت داده‌های TSETMC (بدون نیاز به توکن)"""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
@@ -305,7 +332,7 @@ def fetch_tsetmc_data():
     }
     
     try:
-        response = requests.get(API_URL_TSETMC, headers=headers, timeout=10)
+        response = requests.get(api_url, headers=headers, timeout=10)
         
         if response.status_code == 200:
             return response.json()
@@ -316,7 +343,7 @@ def fetch_tsetmc_data():
         print(f"✗ خطا در دریافت TSETMC: {e}")
         return None
 
-def save_to_database(market_sheet_data, tsetmc_data, engine):
+def save_to_database(symbol_id, market_sheet_data, tsetmc_data, engine):
     """ذخیره داده‌ها در دیتابیس SQL Server"""
     try:
         import pandas as pd
@@ -325,6 +352,7 @@ def save_to_database(market_sheet_data, tsetmc_data, engine):
         fetch_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         df = pd.DataFrame([{
+            'symbol_id': symbol_id,
             'timestamp': timestamp,
             'fetch_time': fetch_time,
             'market_sheet_json': json.dumps(market_sheet_data, ensure_ascii=False) if market_sheet_data else None,
@@ -332,7 +360,7 @@ def save_to_database(market_sheet_data, tsetmc_data, engine):
         }])
         
         df.to_sql(
-            name='market_data',
+            name='market_data_combined',
             con=engine,
             schema=config.TSETMC_SCHEMA,
             if_exists='append',
@@ -346,9 +374,93 @@ def save_to_database(market_sheet_data, tsetmc_data, engine):
         print(f"✗ خطا در ذخیره دیتابیس: {e}")
         return False
 
+def check_working_hours(symbol):
+    """بررسی اینکه آیا در ساعت کاری نماد هستیم"""
+    iran_tz = pytz.timezone('Asia/Tehran')
+    now = datetime.now(iran_tz)
+    current_hour = now.hour
+    current_minute = now.minute
+    
+    wh = symbol['working_hours']
+    start_hour = wh['start_hour']
+    start_minute = wh['start_minute']
+    end_hour = wh['end_hour']
+    end_minute = wh['end_minute']
+    
+    # بررسی ساعت شروع
+    if current_hour < start_hour or (current_hour == start_hour and current_minute < start_minute):
+        return False
+    
+    # بررسی ساعت پایان
+    if current_hour > end_hour or (current_hour == end_hour and current_minute > end_minute):
+        return False
+    
+    return True
+
 # ═══════════════════════════════════════════════════════════
-# قسمت 3: برنامه اصلی
+# قسمت 3: برنامه اصلی برای هر نماد
 # ═══════════════════════════════════════════════════════════
+def fetch_symbol_data(symbol, token, driver, token_refresh_count, shared_state):
+    """دریافت داده برای یک نماد"""
+    symbol_id = symbol['id']
+    iran_tz = pytz.timezone('Asia/Tehran')
+    now = datetime.now(iran_tz)
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    if not check_working_hours(symbol):
+        wh = symbol['working_hours']
+        print(f"[{timestamp} - {symbol_id}] ⏳ استندبای - خارج از ساعت کاری ({wh['start_hour']:02d}:{wh['start_minute']:02d}-{wh['end_hour']:02d}:{wh['end_minute']:02d})")
+        return token, driver, token_refresh_count, False
+    
+    print(f"[{timestamp} - {symbol_id}] دریافت #{shared_state['fetch_counts'][symbol_id] + 1}...", end=" ")
+    
+    # دریافت Market Sheet
+    market_sheet_data, token_expired = fetch_market_sheet_data(token, symbol['api_market_sheet'])
+    
+    # اگر توکن منقضی شده بود
+    if token_expired:
+        if token_refresh_count < MAX_TOKEN_REFRESH_ATTEMPTS:
+            new_token, driver, token_refresh_count = refresh_token_if_needed(
+                driver, token, token_refresh_count
+            )
+            
+            if new_token:
+                token = new_token
+                shared_state['token'] = token  # به‌روزرسانی توکن مشترک
+                # تلاش مجدد با توکن جدید
+                print(f"[{timestamp} - {symbol_id}] تلاش مجدد با توکن جدید...", end=" ")
+                market_sheet_data, token_expired = fetch_market_sheet_data(token, symbol['api_market_sheet'])
+            else:
+                print(f"❌ [{symbol_id}] تمدید توکن ناموفق بود")
+        else:
+            print(f"❌ [{symbol_id}] حداکثر تلاش برای تمدید توکن")
+    
+    # دریافت TSETMC
+    tsetmc_data = fetch_tsetmc_data(symbol['api_tsetmc'])
+    
+    # اگر حداقل یکی موفق بود
+    if market_sheet_data or tsetmc_data:
+        if save_to_database(symbol_id, market_sheet_data, tsetmc_data, config.engine):
+            shared_state['fetch_counts'][symbol_id] += 1
+            
+            info_parts = []
+            if market_sheet_data:
+                buy_count = len(market_sheet_data.get('buySheets', []))
+                sell_count = len(market_sheet_data.get('sellSheets', []))
+                info_parts.append(f"MS(خرید:{buy_count}, فروش:{sell_count})")
+            if tsetmc_data:
+                closing_price = tsetmc_data.get('closingPriceInfo', {}).get('pClosing', 'N/A')
+                info_parts.append(f"TSE(قیمت:{closing_price})")
+            
+            print(f"✓ {' + '.join(info_parts)}")
+            return token, driver, token_refresh_count, True
+        else:
+            print("✗ خطا در ذخیره")
+    else:
+        print(f"✗ دریافت ناموفق")
+    
+    return token, driver, token_refresh_count, False
+
 def main():
     driver = None
     token = None
@@ -386,104 +498,51 @@ def main():
         print(f"  آخرین 30 کاراکتر: ...{token[-30:]}")
         
         print("\n" + "═" * 60)
-        print("✓ آماده دریافت داده‌ها...")
+        print("✓ آماده دریافت داده‌ها برای چند نماد...")
+        print(f"  تعداد نمادها: {len(SYMBOLS)}")
+        for sym in SYMBOLS:
+            wh = sym['working_hours']
+            print(f"  • {sym['name']}: {wh['start_hour']:02d}:{wh['start_minute']:02d} - {wh['end_hour']:02d}:{wh['end_minute']:02d}")
         print(f"  فاصله زمانی: هر {FETCH_INTERVAL} ثانیه")
         print(f"  ذخیره در: دیتابیس {config.DB_NAME} (schema: {config.TSETMC_SCHEMA})")
         print("  برای توقف: Ctrl+C")
-        print("⏰ ساعات کاری: فقط بین 11:45 تا 18:00 (ساعت ایران)")
         print("🔄 تمدید خودکار توکن: فعال")
         print("═" * 60 + "\n")
         
         # 2. حلقه دریافت داده
-        fetch_count = 0
-        error_count = 0
-        max_consecutive_errors = 5
+        shared_state = {
+            'token': token,
+            'fetch_counts': {sym['id']: 0 for sym in SYMBOLS}
+        }
         first_save_done = False
         
         while True:
-            iran_tz = pytz.timezone('Asia/Tehran')
-            now = datetime.now(iran_tz)
-            current_hour = now.hour
-            current_minute = now.minute
-            in_working_hours = (current_hour > 11 or (current_hour == 11 and current_minute >= 45)) and current_hour < 18
+            # دریافت داده برای همه نمادها
+            for symbol in SYMBOLS:
+                token, driver, token_refresh_count, success = fetch_symbol_data(
+                    symbol, token, driver, token_refresh_count, shared_state
+                )
+                
+                # بستن مرورگر بعد از اولین ذخیره موفق
+                if success and not first_save_done and driver:
+                    print("✓ اولین ذخیره موفق. بستن مرورگر...")
+                    try:
+                        driver.switch_to.default_content()
+                        driver.quit()
+                        driver = None
+                        first_save_done = True
+                        print("✓ مرورگر بسته شد.")
+                    except Exception as e:
+                        print(f"⚠ خطا در بستن مرورگر: {e}")
+                        first_save_done = True
             
-            timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-            
-            if in_working_hours:
-                print(f"[{timestamp} IRST] دریافت #{fetch_count + 1}...", end=" ")
-                
-                # دریافت Market Sheet با چک کردن انقضای توکن
-                market_sheet_data, token_expired = fetch_market_sheet_data(token)
-                
-                # اگر توکن منقضی شده بود
-                if token_expired:
-                    if token_refresh_count < MAX_TOKEN_REFRESH_ATTEMPTS:
-                        new_token, driver, token_refresh_count = refresh_token_if_needed(
-                            driver, token, token_refresh_count
-                        )
-                        
-                        if new_token:
-                            token = new_token
-                            # تلاش مجدد با توکن جدید
-                            print(f"[{timestamp} IRST] تلاش مجدد با توکن جدید...", end=" ")
-                            market_sheet_data, token_expired = fetch_market_sheet_data(token)
-                            
-                            if not token_expired and market_sheet_data:
-                                error_count = 0  # reset خطاها
-                        else:
-                            print("❌ تمدید توکن ناموفق بود. ادامه با TSETMC فقط...")
-                    else:
-                        print(f"❌ حداکثر تلاش ({MAX_TOKEN_REFRESH_ATTEMPTS}) برای تمدید توکن انجام شد")
-                        print("⏸️  ادامه فقط با TSETMC...")
-                
-                # دریافت TSETMC
-                tsetmc_data = fetch_tsetmc_data()
-                
-                # اگر حداقل یکی موفق بود
-                if market_sheet_data or tsetmc_data:
-                    error_count = 0
-                    
-                    if save_to_database(market_sheet_data, tsetmc_data, config.engine):
-                        fetch_count += 1
-                        
-                        info_parts = []
-                        if market_sheet_data:
-                            buy_count = len(market_sheet_data.get('buySheets', []))
-                            sell_count = len(market_sheet_data.get('sellSheets', []))
-                            info_parts.append(f"MarketSheet(خرید:{buy_count}, فروش:{sell_count})")
-                        if tsetmc_data:
-                            closing_price = tsetmc_data.get('closingPriceInfo', {}).get('pClosing', 'N/A')
-                            info_parts.append(f"TSETMC(قیمت:{closing_price})")
-                        
-                        print(f"✓ {' + '.join(info_parts)}")
-                        
-                        # بستن مرورگر بعد از اولین ذخیره موفق
-                        if not first_save_done and driver:
-                            print("✓ اولین ذخیره موفق. بستن مرورگر...")
-                            try:
-                                driver.switch_to.default_content()
-                                driver.quit()
-                                driver = None
-                                first_save_done = True
-                                print("✓ مرورگر بسته شد.")
-                            except Exception as e:
-                                print(f"⚠ خطا در بستن مرورگر: {e}")
-                                first_save_done = True
-                    else:
-                        print("✗ خطا در ذخیره")
-                else:
-                    error_count += 1
-                    print(f"✗ دریافت ناموفق (خطای متوالی: {error_count}/{max_consecutive_errors})")
-                
-                time.sleep(FETCH_INTERVAL)
-            else:
-                print(f"[{timestamp} IRST] ⏳ استندبای - انتظار 11:45 (الان: {current_hour:02d}:{current_minute:02d})")
-                time.sleep(60)
+            time.sleep(FETCH_INTERVAL)
     
     except KeyboardInterrupt:
         print("\n\n" + "═" * 60)
         print("✓ برنامه توسط کاربر متوقف شد")
-        print(f"✓ مجموع {fetch_count} دریافت موفق")
+        for sym in SYMBOLS:
+            print(f"  • {sym['id']}: {shared_state['fetch_counts'][sym['id']]} دریافت موفق")
         print("═" * 60)
     
     except Exception as e:
@@ -499,36 +558,43 @@ def main():
                 pass
 
 def create_table_if_not_exists(engine):
-    """ایجاد جدول market_data اگر وجود نداشته باشد"""
+    """ایجاد جدول market_data_combined اگر وجود نداشته باشد"""
     from sqlalchemy import text
     
     create_table_sql = """
-    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='market_data' AND xtype='U')
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='market_data_combined' AND xtype='U')
     BEGIN
-        CREATE TABLE tsetmc_api.market_data (
+        CREATE TABLE tsetmc_api.market_data_combined (
             id INT IDENTITY(1,1) PRIMARY KEY,
+            symbol_id NVARCHAR(50) NOT NULL,
             timestamp DATETIME2 NOT NULL,
             fetch_time NVARCHAR(50) NOT NULL,
             market_sheet_json NVARCHAR(MAX) NULL,
             tsetmc_json NVARCHAR(MAX) NULL,
             created_at DATETIME2 DEFAULT GETDATE()
         )
+        
+        -- ایجاد ایندکس برای symbol_id
+        CREATE INDEX IX_market_data_combined_symbol_id ON tsetmc_api.market_data_combined(symbol_id)
+        CREATE INDEX IX_market_data_combined_timestamp ON tsetmc_api.market_data_combined(timestamp)
     END
     ELSE
     BEGIN
+        -- اطمینان از وجود ستون symbol_id
         IF NOT EXISTS (SELECT * FROM sys.columns
-                       WHERE object_id = OBJECT_ID('tsetmc_api.market_data')
-                       AND name = 'tsetmc_json')
+                       WHERE object_id = OBJECT_ID('tsetmc_api.market_data_combined')
+                       AND name = 'symbol_id')
         BEGIN
-            ALTER TABLE tsetmc_api.market_data
-            ADD tsetmc_json NVARCHAR(MAX) NULL
+            ALTER TABLE tsetmc_api.market_data_combined
+            ADD symbol_id NVARCHAR(50) NOT NULL DEFAULT 'UNKNOWN'
         END
         
-        IF EXISTS (SELECT * FROM sys.columns
-                   WHERE object_id = OBJECT_ID('tsetmc_api.market_data')
-                   AND name = 'data_json')
+        IF NOT EXISTS (SELECT * FROM sys.columns
+                       WHERE object_id = OBJECT_ID('tsetmc_api.market_data_combined')
+                       AND name = 'tsetmc_json')
         BEGIN
-            EXEC sp_rename 'tsetmc_api.market_data.data_json', 'market_sheet_json', 'COLUMN'
+            ALTER TABLE tsetmc_api.market_data_combined
+            ADD tsetmc_json NVARCHAR(MAX) NULL
         END
     END
     """
@@ -536,7 +602,7 @@ def create_table_if_not_exists(engine):
     with engine.connect() as conn:
         conn.execute(text(create_table_sql))
         conn.commit()
-    print("✓ جدول market_data ایجاد/به‌روزرسانی شد.")
+    print("✓ جدول market_data_combined ایجاد/به‌روزرسانی شد.")
 
 if __name__ == "__main__":
     create_table_if_not_exists(config.engine)
