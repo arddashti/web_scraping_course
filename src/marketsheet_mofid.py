@@ -57,6 +57,21 @@ MAX_TOKEN_REFRESH_ATTEMPTS = 3
 # ═══════════════════════════════════════════════════════════
 # قسمت 2: توابع کمکی
 # ═══════════════════════════════════════════════════════════
+def is_weekend():
+    """بررسی اینکه آیا امروز پنجشنبه یا جمعه است (تعطیلات آخر هفته)"""
+    iran_tz = pytz.timezone('Asia/Tehran')
+    now = datetime.now(iran_tz)
+    
+    # weekday() برمی‌گرداند: 0=دوشنبه، 1=سه‌شنبه، 2=چهارشنبه، 3=پنجشنبه، 4=جمعه، 5=شنبه، 6=یکشنبه
+    weekday = now.weekday()
+    
+    # پنجشنبه = 3، جمعه = 4
+    if weekday == 3 or weekday == 4:
+        day_name = "پنجشنبه" if weekday == 3 else "جمعه"
+        return True, day_name
+    
+    return False, None
+
 def setup_driver():
     """راه‌اندازی مرورگر با تنظیمات ضد-ربات"""
     options = webdriver.ChromeOptions()
@@ -462,6 +477,15 @@ def fetch_symbol_data(symbol, token, driver, token_refresh_count, shared_state):
     return token, driver, token_refresh_count, False
 
 def main():
+    # بررسی روز تعطیل
+    is_weekend_day, day_name = is_weekend()
+    if is_weekend_day:
+        print("\n" + "🚫" * 30)
+        print(f"🚫 امروز {day_name} است - بازار تعطیل است")
+        print("🚫 برنامه اجرا نمی‌شود")
+        print("🚫" * 30 + "\n")
+        return
+    
     driver = None
     token = None
     token_refresh_count = 0
@@ -507,6 +531,7 @@ def main():
         print(f"  ذخیره در: دیتابیس {config.DB_NAME} (schema: {config.TSETMC_SCHEMA})")
         print("  برای توقف: Ctrl+C")
         print("🔄 تمدید خودکار توکن: فعال")
+        print("🚫 روزهای تعطیل: پنجشنبه و جمعه")
         print("═" * 60 + "\n")
         
         # 2. حلقه دریافت داده
@@ -517,6 +542,16 @@ def main():
         first_save_done = False
         
         while True:
+            # بررسی مجدد روز تعطیل در هر iteration
+            is_weekend_day, day_name = is_weekend()
+            if is_weekend_day:
+                iran_tz = pytz.timezone('Asia/Tehran')
+                now = datetime.now(iran_tz)
+                timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+                print(f"[{timestamp}] 🚫 امروز {day_name} است - در حالت استندبای...")
+                time.sleep(60)  # چک کردن هر 1 دقیقه
+                continue
+            
             # دریافت داده برای همه نمادها
             for symbol in SYMBOLS:
                 token, driver, token_refresh_count, success = fetch_symbol_data(
