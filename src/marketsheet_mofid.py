@@ -73,19 +73,52 @@ def is_weekend():
     return False, None
 
 def setup_driver():
-    """راه‌اندازی مرورگر با تنظیمات ضد-ربات"""
+    """راه‌اندازی مرورگر با تنظیمات ضد-ربات (حالت headless)"""
     options = webdriver.ChromeOptions()
+    
+    # ✅ Headless Mode - مرورگر بدون نمایش گرافیکی
+    options.add_argument('--headless=new')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
+    
+    # تنظیمات ضد-تشخیص
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_argument('--disable-setuid-sandbox')
+    options.add_argument('--disable-web-security')
+    options.add_argument('--disable-features=IsolateOrigins,site-per-process')
+    
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
     
+    # تنظیمات اضافی برای بهبود عملکرد headless
+    prefs = {
+        "profile.default_content_setting_values.notifications": 2,
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False
+    }
+    options.add_experimental_option("prefs", prefs)
+    
     service = Service(DRIVER_PATH)
     driver = webdriver.Chrome(service=service, options=options)
+    
+    # اسکریپت‌های ضد-تشخیص
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+        "userAgent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+    })
+    driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+        'source': '''
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en', 'fa']});
+        '''
+    })
+    
+    print("✓ مرورگر در حالت Headless راه‌اندازی شد")
     return driver
 
 def login_and_get_token(driver):
@@ -96,7 +129,7 @@ def login_and_get_token(driver):
         print("═" * 60)
         
         driver.get('https://login.emofid.com/Login')
-        time.sleep(10)
+        time.sleep(12)  # زمان بیشتر برای headless mode
         
         print(f"✓ صفحه لود شد: {driver.title}")
         
@@ -144,9 +177,7 @@ def login_and_get_token(driver):
         login_button.click()
         print("✓ دکمه لاگین کلیک شد")
         
-        driver.maximize_window()
-        print("✓ مرورگر به حالت تمام‌صفحه (ماکزیمم) درآمد")
-        time.sleep(8)
+        time.sleep(10)
         
         driver.switch_to.default_content()
         
@@ -180,7 +211,7 @@ def login_and_get_token(driver):
             
             token = None
             start_time = time.time()
-            timeout = 15
+            timeout = 20
             
             while time.time() - start_time < timeout:
                 try:
@@ -236,7 +267,7 @@ def login_and_get_token(driver):
                 
                 if 'easytrader.ir' not in driver.current_url:
                     driver.get("https://d.easytrader.ir/")
-                    time.sleep(3)
+                    time.sleep(5)
                 
                 token = driver.execute_script("return localStorage.getItem('access_token');")
                 if token:
@@ -278,11 +309,15 @@ def login_and_get_token(driver):
             return token
         else:
             print("❌ توکن یافت نشد")
+            # ذخیره اسکرین‌شات برای دیباگ
+            driver.save_screenshot('login_error_headless.png')
+            print("📸 اسکرین‌شات ذخیره شد: login_error_headless.png")
             return None
             
     except Exception as e:
         print(f"✗ خطا در لاگین: {e}")
-        driver.save_screenshot('login_error.png')
+        driver.save_screenshot('login_error_headless.png')
+        print("📸 اسکرین‌شات ذخیره شد: login_error_headless.png")
         return None
 
 def refresh_token_if_needed(driver, token, token_refresh_count):
@@ -492,16 +527,21 @@ def main():
     
     try:
         # 1. راه‌اندازی مرورگر و لاگین اولیه
+        print("\n" + "🚀" * 30)
+        print("🚀 شروع برنامه در حالت Headless (بدون نمایش مرورگر)")
+        print("🚀" * 30 + "\n")
+        
         driver = setup_driver()
         token = login_and_get_token(driver)
         
         if not token:
             print("\n" + "=" * 60)
             print("توکن یافت نشد! لطفاً آن را دستی کپی کنید:")
-            print("1. در مرورگر F12 را بزنید")
-            print("2. به تب Application بروید")
-            print("3. Local Storage > https://d.easytrader.ir را باز کنید")
-            print("4. مقدار 'access_token' را کپی کنید")
+            print("1. مرورگر را به صورت معمولی باز کنید و لاگین کنید")
+            print("2. در مرورگر F12 را بزنید")
+            print("3. به تب Application بروید")
+            print("4. Local Storage > https://d.easytrader.ir را باز کنید")
+            print("5. مقدار 'access_token' را کپی کنید")
             print("   (فقط مقدار توکن، بدون 'Bearer')")
             print("=" * 60)
             token = input("\nتوکن را اینجا paste کنید: ").strip()
@@ -532,6 +572,7 @@ def main():
         print("  برای توقف: Ctrl+C")
         print("🔄 تمدید خودکار توکن: فعال")
         print("🚫 روزهای تعطیل: پنجشنبه و جمعه")
+        print("🎭 حالت اجرا: Headless (بدون نمایش مرورگر)")
         print("═" * 60 + "\n")
         
         # 2. حلقه دریافت داده
@@ -566,7 +607,7 @@ def main():
                         driver.quit()
                         driver = None
                         first_save_done = True
-                        print("✓ مرورگر بسته شد.")
+                        print("✓ مرورگر بسته شد. برنامه در حالت API ادامه می‌دهد.")
                     except Exception as e:
                         print(f"⚠ خطا در بستن مرورگر: {e}")
                         first_save_done = True
@@ -582,6 +623,8 @@ def main():
     
     except Exception as e:
         print(f"\n✗ خطای غیرمنتظره: {e}")
+        import traceback
+        traceback.print_exc()
     
     finally:
         if driver:
@@ -589,6 +632,7 @@ def main():
             try:
                 driver.switch_to.default_content()
                 driver.quit()
+                print("✓ مرورگر بسته شد")
             except:
                 pass
 
@@ -640,5 +684,17 @@ def create_table_if_not_exists(engine):
     print("✓ جدول market_data_combined ایجاد/به‌روزرسانی شد.")
 
 if __name__ == "__main__":
+    print("\n" + "█" * 60)
+    print("█" + " " * 58 + "█")
+    print("█" + "  برنامه دریافت خودکار داده‌های بورس - نسخه Headless  ".center(58) + "█")
+    print("█" + " " * 58 + "█")
+    print("█" * 60 + "\n")
+    
     create_table_if_not_exists(config.engine)
     main()
+    
+    print("\n" + "█" * 60)
+    print("█" + " " * 58 + "█")
+    print("█" + "  برنامه با موفقیت پایان یافت  ".center(58) + "█")
+    print("█" + " " * 58 + "█")
+    print("█" * 60 + "\n")
