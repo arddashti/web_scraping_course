@@ -11,3 +11,5 @@ selenium
 webdriver-manager
 openpyxl
 tsetmc
+aiohttp
+playwright

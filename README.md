@@ -182,3 +182,8 @@ py -m venv .venv
 نصب نیازمندی‌ها:
 
 python -m pip install -r requirements.txt
+
+
+pip install playwright
+playwright install chromium --with-deps
+playwright install-deps
