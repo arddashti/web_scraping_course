@@ -9,6 +9,12 @@ import pytz
 import asyncio
 import aiohttp
 
+# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+# این دو خط رو اضافه کن (فقط همین!)
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 import config
 
@@ -330,20 +336,31 @@ async def fetch_market_sheet_data_async(session, token, api_url):
         return None, False
 
 async def fetch_tsetmc_data_async(session, api_url):
-    """دریافت async داده‌های TSETMC"""
+    """دریافت async داده‌های TSETMC — با رفع خطای SSL فقط برای tsetmc"""
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json, text/plain, */*"
     }
     
+    # این ۴ خط جادویی فقط برای tsetmc.com اضافه شدن
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
     try:
-        async with session.get(api_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as response:
+        async with session.get(
+            api_url,
+            headers=headers,
+            ssl=ssl_context,                  # ← این خط کلید حل مشکله
+            timeout=aiohttp.ClientTimeout(total=10)
+        ) as response:
             if response.status == 200:
                 return await response.json()
             else:
                 return None
     except Exception as e:
-        print(f"✗ خطا در دریافت async TSETMC: {e}")
+        print(f"خطا در دریافت async TSETMC: {e}")
         return None
 
 async def fetch_all_symbols_async(symbols, token):
